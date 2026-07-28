@@ -4,8 +4,17 @@ mihomoctl 是一个 Mihomo（Clash.Meta）的 CLI 控制工具，通过 RESTful 
 
 ## 安装
 
+### Go
+
 ```bash
 go install github.com/inobit/mihomoctl@latest
+```
+
+### Scoop (Windows)
+
+```bash
+scoop bucket add inosoft https://github.com/inobit/inosoft
+scoop install inosoft/mihomoctl
 ```
 
 或从源码构建：
