@@ -1,0 +1,35 @@
+package cmd
+
+import (
+	"os"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/inobit/mihomoctl/internal/interact"
+)
+
+var rootCmd = &cobra.Command{
+	Use:   "mihomoctl",
+	Short: "Mihomo CLI 控制工具",
+	Long:  `mihomoctl 通过 Mihomo RESTful API 管理代理策略组和查看日志。`,
+	Run: func(cmd *cobra.Command, args []string) {
+		c := newClient()
+		if err := interact.Run(c); err != nil {
+			os.Exit(1)
+		}
+	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().StringP("server", "s", "", "Mihomo API 地址 (如 127.0.0.1:9090)")
+	rootCmd.PersistentFlags().StringP("secret", "S", "", "Mihomo API 密钥")
+
+	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
+	viper.BindPFlag("secret", rootCmd.PersistentFlags().Lookup("secret"))
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
