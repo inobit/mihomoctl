@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
+	"go.yaml.in/yaml/v3"
 )
 
 var configSetCmd = &cobra.Command{
@@ -16,23 +18,61 @@ var configSetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		server, _ := cmd.Flags().GetString("server")
 		secret, _ := cmd.Flags().GetString("secret")
+		serverChanged := cmd.Flags().Changed("server")
+		secretChanged := cmd.Flags().Changed("secret")
 
-		if server == "" {
-			fmt.Fprintln(os.Stderr, "错误: --server 不能为空")
+		if !serverChanged && !secretChanged {
+			fmt.Fprintln(os.Stderr, "错误: 请至少指定 --server 或 --secret")
 			os.Exit(1)
 		}
 
-		viper.Set("server", server)
-		viper.Set("secret", secret)
-
 		configPath := configFilePath()
+
+		// 读取已有配置文件
+		var cfg map[string]any
+		if data, err := os.ReadFile(configPath); err == nil {
+			yaml.Unmarshal(data, &cfg)
+		}
+		if cfg == nil {
+			cfg = make(map[string]any)
+		}
+
+		// 应用修改
+		if serverChanged {
+			if server == "" {
+				fmt.Fprintln(os.Stderr, "错误: --server 不能为空")
+				os.Exit(1)
+			}
+			cfg["server"] = server
+		}
+
+		if secretChanged {
+			if secret == "__prompt__" {
+				fmt.Print("输入 API 密钥: ")
+				password, err := term.ReadPassword(int(os.Stdin.Fd()))
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "\n读取密钥失败: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Println()
+				secret = string(password)
+			}
+			cfg["secret"] = secret
+		}
+
+		data, err := yaml.Marshal(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "序列化配置失败: %v\n", err)
+			os.Exit(1)
+		}
+
 		dir := filepath.Dir(configPath)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			fmt.Fprintf(os.Stderr, "创建配置目录失败: %v\n", err)
 			os.Exit(1)
 		}
 
-		if err := viper.WriteConfigAs(configPath); err != nil {
+		if err := os.WriteFile(configPath, data, 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "保存配置失败: %v\n", err)
 			os.Exit(1)
 		}
@@ -70,10 +110,6 @@ var configCmd = &cobra.Command{
 }
 
 func init() {
-	configSetCmd.Flags().StringP("server", "s", "", "API 地址 (如 127.0.0.1:9090)")
-	configSetCmd.Flags().String("secret", "", "API 密钥")
-	configSetCmd.MarkFlagRequired("server")
-
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configShowCmd)
 	rootCmd.AddCommand(configCmd)

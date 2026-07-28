@@ -41,6 +41,7 @@ var modeSetCmd = &cobra.Command{
 
 		if len(args) == 0 {
 			if err := interact.ModeSelect(c); err != nil {
+				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
 			return

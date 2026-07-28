@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		c := newClient()
 		if err := interact.Run(c); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	},
@@ -22,7 +24,8 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringP("server", "s", "", "Mihomo API 地址 (如 127.0.0.1:9090)")
-	rootCmd.PersistentFlags().StringP("secret", "S", "", "Mihomo API 密钥")
+	rootCmd.PersistentFlags().StringP("secret", "p", "", "Mihomo API 密钥（-p 不带值则交互式输入）")
+	rootCmd.PersistentFlags().Lookup("secret").NoOptDefVal = "__prompt__"
 
 	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
 	viper.BindPFlag("secret", rootCmd.PersistentFlags().Lookup("secret"))
