@@ -9,10 +9,14 @@ import (
 	"github.com/inobit/mihomoctl/internal/interact"
 )
 
+// version 通过 ldflags 注入，格式: -X github.com/inobit/mihomoctl/cmd.version=1.0.0
+var version = "dev"
+
 var rootCmd = &cobra.Command{
 	Use:   "mihomoctl",
 	Short: "Mihomo CLI 控制工具",
 	Long:  `mihomoctl 通过 Mihomo RESTful API 管理代理策略组和查看日志。`,
+	Version: version,
 	Run: func(cmd *cobra.Command, args []string) {
 		c := newClient()
 		if err := interact.Run(c); err != nil {
