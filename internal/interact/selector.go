@@ -12,7 +12,7 @@ import (
 var (
 	activeStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 	inactiveStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
-	labelStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true)
+	labelStyle    = lipgloss.NewStyle()
 	hintStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Faint(true)
 	errorStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	currentStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))

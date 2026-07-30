@@ -33,7 +33,7 @@ func ConnectionList(c *client.Client) error {
 		autoRefresh: true,
 	}
 
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err
 }
@@ -180,6 +180,9 @@ func (m *connectionModel) View() string {
 
 	var b strings.Builder
 
+	// 顶部留白
+	b.WriteString("\n")
+
 	// 标题栏
 	title := fmt.Sprintf("活跃连接 (%d)", len(m.conns))
 	autoStatus := "开"
@@ -188,7 +191,7 @@ func (m *connectionModel) View() string {
 	}
 	title += fmt.Sprintf("   自动刷新: %s (%ds)", autoStatus, autoRefreshInterval/time.Second)
 
-	b.WriteString(labelStyle.Render(title))
+	b.WriteString(title)
 	b.WriteString("\n")
 
 	width := m.width
@@ -218,14 +221,18 @@ func (m *connectionModel) View() string {
 		b.WriteString(hintStyle.Render(header))
 		b.WriteString("\n")
 
-		visible := m.height - 5
-		if visible < 5 {
-			visible = 5
+		// 固定行: 空行 + label + divider + header + hints = 5
+		// 可选行: 上面还有 + 下面还有 = 最多 2
+		// 先按最坏情况(上下都有提示)算 visible，再根据实际 start/end 修正
+		maxVisible := m.height - 7
+		if maxVisible < 5 {
+			maxVisible = 5
 		}
-		if visible > len(m.conns) {
-			visible = len(m.conns)
+		if maxVisible > len(m.conns) {
+			maxVisible = len(m.conns)
 		}
 
+		visible := maxVisible
 		start := m.cursor - visible/2
 		if start < 0 {
 			start = 0
@@ -237,6 +244,42 @@ func (m *connectionModel) View() string {
 			start = 0
 		}
 		end := start + visible
+
+		hasAbove := start > 0
+		hasBelow := end < len(m.conns)
+
+		// 修正: 如果实际可选行少于 2，visible 可以增大
+		actualFixed := 5
+		actualOptional := 0
+		if hasAbove {
+			actualOptional++
+		}
+		if hasBelow {
+			actualOptional++
+		}
+		adjustedVisible := m.height - actualFixed - actualOptional
+		if adjustedVisible < 5 {
+			adjustedVisible = 5
+		}
+		if adjustedVisible > len(m.conns) {
+			adjustedVisible = len(m.conns)
+		}
+
+		// 只有增大时才需要重新计算（缩小不会改变 hasAbove/hasBelow）
+		if adjustedVisible > visible {
+			visible = adjustedVisible
+			start = m.cursor - visible/2
+			if start < 0 {
+				start = 0
+			}
+			if start+visible > len(m.conns) {
+				start = len(m.conns) - visible
+			}
+			if start < 0 {
+				start = 0
+			}
+			end = start + visible
+		}
 
 		if start > 0 {
 			b.WriteString(hintStyle.Render(fmt.Sprintf("  ... 上面还有 %d 项", start)))
@@ -281,7 +324,6 @@ func (m *connectionModel) View() string {
 		}
 	}
 
-	b.WriteString("\n")
 	b.WriteString(hintStyle.Render("r 刷新  •  a 自动刷新  •  d 关闭选中  •  D 关闭全部  •  ↑↓/jk 导航  •  Esc 退出"))
 
 	return b.String()
