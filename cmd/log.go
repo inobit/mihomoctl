@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -33,7 +34,9 @@ var logCmd = &cobra.Command{
 		}()
 
 		c := newClient()
-		c.HTTPClient.Timeout = 0 // 流式请求不设超时
+		// 流式请求不设超时，使用独立 Client 避免污染共享实例的 Timeout
+		logClient := &http.Client{Timeout: 0, Transport: c.HTTPClient.Transport}
+		c.HTTPClient = logClient
 
 		server := c.BaseURL
 		fmt.Fprintf(os.Stderr, "正在连接 %s/logs?level=%s ...\n", server, level)

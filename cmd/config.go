@@ -31,7 +31,10 @@ var configSetCmd = &cobra.Command{
 		// 读取已有配置文件
 		var cfg map[string]any
 		if data, err := os.ReadFile(configPath); err == nil {
-			yaml.Unmarshal(data, &cfg)
+			if err := yaml.Unmarshal(data, &cfg); err != nil {
+				fmt.Fprintf(os.Stderr, "配置文件解析失败 %s: %v\n", configPath, err)
+				os.Exit(1)
+			}
 		}
 		if cfg == nil {
 			cfg = make(map[string]any)
@@ -67,12 +70,12 @@ var configSetCmd = &cobra.Command{
 		}
 
 		dir := filepath.Dir(configPath)
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0700); err != nil {
 			fmt.Fprintf(os.Stderr, "创建配置目录失败: %v\n", err)
 			os.Exit(1)
 		}
 
-		if err := os.WriteFile(configPath, data, 0644); err != nil {
+		if err := os.WriteFile(configPath, data, 0600); err != nil {
 			fmt.Fprintf(os.Stderr, "保存配置失败: %v\n", err)
 			os.Exit(1)
 		}

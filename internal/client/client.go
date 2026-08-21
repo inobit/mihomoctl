@@ -33,7 +33,7 @@ func New(server, secret string) *Client {
 }
 
 func (c *Client) doRequest(method, path string, body any) (*http.Response, error) {
-	url := c.BaseURL + path
+	reqURL := c.BaseURL + path
 
 	var bodyReader io.Reader
 	if body != nil {
@@ -44,7 +44,7 @@ func (c *Client) doRequest(method, path string, body any) (*http.Response, error
 		bodyReader = bytes.NewReader(data)
 	}
 
-	req, err := http.NewRequest(method, url, bodyReader)
+	req, err := http.NewRequest(method, reqURL, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -61,7 +61,7 @@ func (c *Client) doRequest(method, path string, body any) (*http.Response, error
 
 	if resp.StatusCode >= 400 {
 		defer resp.Body.Close()
-		errBody, _ := io.ReadAll(resp.Body)
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, strings.TrimSpace(string(errBody)))
 	}
 
@@ -89,7 +89,7 @@ func (c *Client) GetGroups() ([]model.GroupInfo, error) {
 }
 
 func (c *Client) GetProxy(name string) (*model.ProxyInfo, error) {
-	resp, err := c.doRequest("GET", "/proxies/"+name, nil)
+	resp, err := c.doRequest("GET", "/proxies/"+url.PathEscape(name), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (c *Client) GetProxy(name string) (*model.ProxyInfo, error) {
 }
 
 func (c *Client) SwitchProxy(group, node string) error {
-	resp, err := c.doRequest("PUT", "/proxies/"+group, model.SwitchRequest{Name: node})
+	resp, err := c.doRequest("PUT", "/proxies/"+url.PathEscape(group), model.SwitchRequest{Name: node})
 	if err != nil {
 		return err
 	}
@@ -157,11 +157,20 @@ func (c *Client) GetTraffic() (*model.TrafficInfo, error) {
 	}
 	defer resp.Body.Close()
 
-	var info model.TrafficInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	// /traffic 为持续推送的流式端点（每秒一条 NDJSON），单次 Decode 会阻塞至超时
+	// 仅读取首条即返回，实现一次性快照语义
+	scanner := bufio.NewScanner(resp.Body)
+	if scanner.Scan() {
+		var info model.TrafficInfo
+		if err := json.Unmarshal(scanner.Bytes(), &info); err != nil {
+			return nil, fmt.Errorf("decode response: %w", err)
+		}
+		return &info, nil
 	}
-	return &info, nil
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read traffic: %w", err)
+	}
+	return nil, fmt.Errorf("empty traffic response")
 }
 
 func (c *Client) GetMemory() (*model.MemoryInfo, error) {

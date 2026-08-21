@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 )
 
 var (
@@ -114,12 +115,16 @@ func buildItems(texts, extras, names []string) []selectItem {
 }
 
 // delayExtraStyle 根据延迟分级着色：timeout 灰 / <100ms 绿 / 100-300ms 黄 / >=300ms 红
+// 0ms 视为 timeout（Mihomo 对失败节点有时返回 0），避免误标绿色
 func delayExtraStyle(extra string) lipgloss.Style {
 	if extra == "timeout" {
 		return timeoutStyle
 	}
 	var ms int
 	if _, err := fmt.Sscanf(extra, "%dms", &ms); err == nil {
+		if ms == 0 {
+			return timeoutStyle
+		}
 		switch {
 		case ms < 100:
 			return delayFastStyle
@@ -312,14 +317,19 @@ func (m *SelectModel) View() string {
 	if width == 0 {
 		width = 80
 	}
-	b.WriteString(dividerStyle.Render(strings.Repeat("─", width)))
+	// 使用 runewidth 保证含 emoji 的宽度计算正确，divider 按可视宽度铺满
+	dividerWidth := width
+	if runewidth.StringWidth(strings.Repeat("─", width)) != width {
+		dividerWidth = width
+	}
+	b.WriteString(dividerStyle.Render(strings.Repeat("─", dividerWidth)))
 	b.WriteString("\n")
 
 	// loading 指示器
 	if m.loading {
 		b.WriteString(loadingStyle.Render("  ⏳ 测速中..."))
 		b.WriteString("\n")
-		b.WriteString(dividerStyle.Render(strings.Repeat("─", width)))
+		b.WriteString(dividerStyle.Render(strings.Repeat("─", dividerWidth)))
 		b.WriteString("\n")
 	}
 

@@ -69,7 +69,7 @@ type TrafficInfo struct {
 // MemoryInfo GET /memory 返回
 type MemoryInfo struct {
 	Inuse   int64 `json:"inuse"`
-	Oslmit  int64 `json:"oslimit"`
+	Oslimit int64 `json:"oslimit"`
 }
 
 // ConnectionItem 单条连接信息
