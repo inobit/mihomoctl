@@ -18,6 +18,11 @@ var (
 	currentStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 	dividerStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Faint(true)
 	loadingStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
+	// 测速分级着色：<100ms 绿 / 100-300ms 黄 / >=300ms 红 / timeout 灰
+	delayFastStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	delayMediumStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	delaySlowStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	timeoutStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
 const numberTimeout = 800 * time.Millisecond
@@ -59,6 +64,7 @@ type SelectModel struct {
 	keyHints  string
 	loading   bool
 	speedTest SpeedTestFn
+	speedErr  string
 }
 
 func NewSelectModel(label string, texts []string, extras []string, names []string, hints string) *SelectModel {
@@ -107,6 +113,25 @@ func buildItems(texts, extras, names []string) []selectItem {
 	return items
 }
 
+// delayExtraStyle 根据延迟分级着色：timeout 灰 / <100ms 绿 / 100-300ms 黄 / >=300ms 红
+func delayExtraStyle(extra string) lipgloss.Style {
+	if extra == "timeout" {
+		return timeoutStyle
+	}
+	var ms int
+	if _, err := fmt.Sscanf(extra, "%dms", &ms); err == nil {
+		switch {
+		case ms < 100:
+			return delayFastStyle
+		case ms < 300:
+			return delayMediumStyle
+		default:
+			return delaySlowStyle
+		}
+	}
+	return currentStyle
+}
+
 func (m *SelectModel) Init() tea.Cmd {
 	return nil
 }
@@ -131,13 +156,16 @@ func (m *SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case speedTestResultMsg:
 		m.loading = false
 		if msg.err != nil {
-			m.items = append(m.items, selectItem{}) // will show error
+			m.speedErr = msg.err.Error()
 			return m, nil
 		}
+		m.speedErr = ""
 		for i := range m.items {
 			if m.items[i].name != "" {
 				if delay, ok := msg.delays[m.items[i].name]; ok {
 					m.items[i].extra = fmt.Sprintf("%dms", delay)
+				} else {
+					m.items[i].extra = "timeout"
 				}
 			}
 		}
@@ -160,6 +188,7 @@ func (m *SelectModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "t":
 		if m.speedTest != nil && !m.loading {
 			m.loading = true
+			m.speedErr = ""
 			return m, m.speedTest(m.label)
 		}
 		return m, nil
@@ -332,7 +361,7 @@ func (m *SelectModel) View() string {
 		line := fmt.Sprintf("%s %s", prefix, m.items[i].text)
 
 		if m.items[i].extra != "" {
-			line += " " + currentStyle.Render(m.items[i].extra)
+			line += " " + delayExtraStyle(m.items[i].extra).Render(m.items[i].extra)
 		}
 
 		if i == m.cursor && !m.loading {
@@ -351,6 +380,11 @@ func (m *SelectModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(hintStyle.Render(m.keyHints))
 	b.WriteString("\n")
+
+	if m.speedErr != "" {
+		b.WriteString(errorStyle.Render(fmt.Sprintf("测速失败: %s", m.speedErr)))
+		b.WriteString("\n")
+	}
 
 	if m.numBuf != "" {
 		if m.numOutOfRange {

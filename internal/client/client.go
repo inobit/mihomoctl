@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -25,7 +27,7 @@ func New(server, secret string) *Client {
 		BaseURL: strings.TrimRight(server, "/"),
 		Secret:  secret,
 		HTTPClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 15 * time.Second,
 		},
 	}
 }
@@ -78,6 +80,11 @@ func (c *Client) GetGroups() ([]model.GroupInfo, error) {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 
+	// 服务端基于 map 迭代，顺序随机；客户端固定按名称排序，保证每次显示一致
+	sort.Slice(result.Proxies, func(i, j int) bool {
+		return result.Proxies[i].Name < result.Proxies[j].Name
+	})
+
 	return result.Proxies, nil
 }
 
@@ -105,7 +112,7 @@ func (c *Client) SwitchProxy(group, node string) error {
 }
 
 func (c *Client) GetGroupDelay(groupName, testURL string, timeout int) (map[string]int, error) {
-	path := fmt.Sprintf("/group/%s/delay?url=%s&timeout=%d", groupName, testURL, timeout)
+	path := fmt.Sprintf("/group/%s/delay?url=%s&timeout=%d", url.PathEscape(groupName), url.QueryEscape(testURL), timeout)
 
 	resp, err := c.doRequest("GET", path, nil)
 	if err != nil {
