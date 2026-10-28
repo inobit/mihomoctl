@@ -32,6 +32,11 @@ func New(server, secret string) *Client {
 	}
 }
 
+// SetTimeout 调整后续请求的超时，用于 provider 拉取这类同步慢操作
+func (c *Client) SetTimeout(d time.Duration) {
+	c.HTTPClient.Timeout = d
+}
+
 func (c *Client) doRequest(method, path string, body any) (*http.Response, error) {
 	reqURL := c.BaseURL + path
 
@@ -301,6 +306,49 @@ func (c *Client) StreamLogs(ctx context.Context, level string, out io.Writer) er
 		fmt.Fprintf(out, "%s\n", formatLogLine(logLine))
 	}
 	return scanner.Err()
+}
+
+// GetProxyProviders GET /providers/proxies 列出 proxy providers
+func (c *Client) GetProxyProviders() (map[string]model.ProviderInfo, error) {
+	return c.getProviders("/providers/proxies")
+}
+
+// GetRuleProviders GET /providers/rules 列出 rule providers
+func (c *Client) GetRuleProviders() (map[string]model.ProviderInfo, error) {
+	return c.getProviders("/providers/rules")
+}
+
+func (c *Client) getProviders(path string) (map[string]model.ProviderInfo, error) {
+	resp, err := c.doRequest("GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var out model.ProvidersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	return out.Providers, nil
+}
+
+// UpdateProxyProvider PUT /providers/proxies/{name} 强制重新拉取 proxy provider（忽略 interval）
+func (c *Client) UpdateProxyProvider(name string) error {
+	return c.updateProvider("proxies", name)
+}
+
+// UpdateRuleProvider PUT /providers/rules/{name} 强制重新拉取 rule provider（忽略 interval）
+func (c *Client) UpdateRuleProvider(name string) error {
+	return c.updateProvider("rules", name)
+}
+
+func (c *Client) updateProvider(kind, name string) error {
+	resp, err := c.doRequest("PUT", "/providers/"+kind+"/"+url.PathEscape(name), nil)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
 }
 
 func formatLogLine(l model.LogLine) string {

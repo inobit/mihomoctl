@@ -130,3 +130,20 @@ type RuleItem struct {
 type RulesResponse struct {
 	Rules []RuleItem `json:"rules"`
 }
+
+// ProviderInfo GET /providers/proxies 与 GET /providers/rules 中的单个 provider（两处字段取并集）
+type ProviderInfo struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	VehicleType string   `json:"vehicleType"`
+	UpdatedAt   string   `json:"updatedAt,omitempty"`
+	Proxies     []any    `json:"proxies,omitempty"`  // 仅 proxy provider，用于计数
+	TestURL     string   `json:"testUrl,omitempty"`  // 仅 proxy provider
+	Behavior    string   `json:"behavior,omitempty"` // 仅 rule provider
+	RuleCount   int      `json:"ruleCount,omitempty"`
+}
+
+// ProvidersResponse GET /providers/proxies 与 GET /providers/rules 返回
+type ProvidersResponse struct {
+	Providers map[string]ProviderInfo `json:"providers"`
+}
