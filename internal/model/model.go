@@ -58,6 +58,11 @@ type ConfigInfo struct {
 	IPv6      bool   `json:"ipv6"`
 }
 
+// ConfigReloadRequest PUT /configs 请求体；path 为空时由 mihomo 使用启动时指定的配置文件
+type ConfigReloadRequest struct {
+	Path string `json:"path,omitempty"`
+}
+
 // TrafficInfo GET /traffic 返回
 type TrafficInfo struct {
 	Up        int64 `json:"up"`

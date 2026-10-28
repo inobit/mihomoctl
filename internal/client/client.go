@@ -141,6 +141,23 @@ func (c *Client) GetConfig() (*model.ConfigInfo, error) {
 	return &cfg, nil
 }
 
+// ReloadConfig PUT /configs 重载配置。
+// path 为空时不指定文件，由 mihomo 按启动时记录的配置文件重载；
+// force 为 true 时带 ?force=true（除代理/规则外还重建全部入站监听），否则不传该参数（mihomo 默认 false）。
+func (c *Client) ReloadConfig(path string, force bool) error {
+	p := "/configs"
+	if force {
+		p += "?force=true"
+	}
+	resp, err := c.doRequest("PUT", p, model.ConfigReloadRequest{Path: path})
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
+// PatchConfig 局部更新运行配置，未提交的字段保持当前值
 func (c *Client) PatchConfig(patch map[string]any) error {
 	resp, err := c.doRequest("PATCH", "/configs", patch)
 	if err != nil {
