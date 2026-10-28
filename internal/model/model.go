@@ -49,13 +49,23 @@ type SpeedTestResult struct {
 
 // ConfigInfo GET /configs 返回
 type ConfigInfo struct {
-	Mode      string `json:"mode"`
-	Port      int    `json:"port"`
-	SocksPort int    `json:"socks-port"`
-	MixedPort int    `json:"mixed-port"`
-	AllowLan  bool   `json:"allow-lan"`
-	LogLevel  string `json:"log-level"`
-	IPv6      bool   `json:"ipv6"`
+	Mode      string     `json:"mode"`
+	Port      int        `json:"port"`
+	SocksPort int        `json:"socks-port"`
+	MixedPort int        `json:"mixed-port"`
+	AllowLan  bool       `json:"allow-lan"`
+	LogLevel  string     `json:"log-level"`
+	IPv6      bool       `json:"ipv6"`
+	Tun       *TunConfig `json:"tun,omitempty"`
+}
+
+// TunConfig GET /configs 中 tun 字段（只取展示用字段）
+type TunConfig struct {
+	Enable              bool   `json:"enable"`
+	Stack               string `json:"stack,omitempty"`
+	Device              string `json:"device,omitempty"`
+	AutoRoute           bool   `json:"auto-route,omitempty"`
+	AutoDetectInterface bool   `json:"auto-detect-interface,omitempty"`
 }
 
 // ConfigReloadRequest PUT /configs 请求体；path 为空时由 mihomo 使用启动时指定的配置文件
