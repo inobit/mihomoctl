@@ -203,8 +203,9 @@ func (m *ProgressModel) View() string {
 	}
 
 	if m.finished {
-		fmt.Fprintf(&b, "\n%s\n", hintStyle.Render(fmt.Sprintf("完成 %d 个，失败 %d 个", m.done, m.failed)))
-		if m.hint != "" {
+		succeeded := m.done - m.failed
+		fmt.Fprintf(&b, "\n%s\n", hintStyle.Render(fmt.Sprintf("共 %d 个：成功 %d 个，失败 %d 个", len(m.items), succeeded, m.failed)))
+		if m.hint != "" && succeeded > 0 {
 			fmt.Fprintf(&b, "%s\n", hintStyle.Render(m.hint))
 		}
 	}
@@ -292,7 +293,15 @@ func runTasksPlain(tasks []Task, opts ProgressOptions) []taskOutcome {
 		fmt.Printf("✓ %s %s\n", tasks[o.index].Label, o.elapsed.Round(time.Millisecond).String())
 	})
 
-	if opts.Hint != "" {
+	succeeded := 0
+	for _, o := range outcomes {
+		if o.err == nil {
+			succeeded++
+		}
+	}
+	fmt.Printf("共 %d 个：成功 %d 个，失败 %d 个\n", len(outcomes), succeeded, len(outcomes)-succeeded)
+
+	if opts.Hint != "" && succeeded > 0 {
 		fmt.Printf("%s\n", opts.Hint)
 	}
 
