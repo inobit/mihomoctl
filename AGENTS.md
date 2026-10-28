@@ -17,6 +17,9 @@ mihomoctl/
 │   ├── connection.go         # connection list + switch <group> <node>
 │   ├── log.go                # log (StreamLogs)
 │   ├── dns.go                # dns flush
+│   ├── reload.go             # reload [-f file] [--force]（PUT /configs）
+│   ├── tun.go                # tun [on|off|status]（PATCH /configs tun.enable）
+│   ├── provider.go           # provider list/update [--proxy|--rule]（仅 HTTP/File）
 │   └── rule.go               # rule list
 └── internal/
     ├── client/client.go      # HTTP 客户端（doRequest + 全部 API 封装）
@@ -24,11 +27,13 @@ mihomoctl/
     └── interact/
         ├── interact.go       # Run / runGroupSelect / runNodeSelect 流程 + 测速触发
         ├── selector.go       # SelectModel 通用选择器（bubbletea, t 测速, extra 渲染）
+        ├── progress.go       # 通用并发任务进度（Task/RunTasks，每项 spinner，docker pull 风格）
         └── connection.go     # connectionModel 连接列表 TUI
 ```
 
 - `internal/client` 唯一 HTTP 封装，`cmd/mode.go:newClient()` 唯一工厂
 - `internal/interact` 负责所有 bubbletea 交互，`selector.go:Update` 处理 `speedTestResultMsg`
+- 需要「多条慢操作并行 + 进度」时用 `interact.RunTasks(tasks, opts)`，不要另写 spinner
 
 ## 常用命令
 
@@ -45,4 +50,8 @@ go vet ./...                  # 检查（无测试套件，以此为准）
 ./mihomoctl rule list         # 规则列表
 ./mihomoctl config show/set   # 配置查看/写入
 ./mihomoctl dns flush         # 清 DNS 缓存
+./mihomoctl reload [-f file]  # 重载配置（缺省用 mihomo 启动时指定的文件）
+./mihomoctl tun [on|off]      # 查看/开关 TUN
+./mihomoctl provider list      # 列出 providers（默认 proxy，--rule 切 rule）
+./mihomoctl provider update [name] [--rule] # 不指定名称=全部
 ```
