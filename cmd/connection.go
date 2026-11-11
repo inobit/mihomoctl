@@ -37,8 +37,9 @@ var connectionListCmd = &cobra.Command{
 	Long: `交互式连接管理页面:
   r        — 手动刷新
   a        — 切换自动刷新（默认 5s）
-  d        — 关闭当前选中连接
+  d        — 关闭当前选中连接（策略视图下：断开经过该策略的全部连接）
   D        — 关闭全部连接
+  Tab/v    — 切换「连接列表 / 按策略聚合」视图
   ↑↓/jk    — 导航
   Esc/q    — 退出`,
 	Run: func(cmd *cobra.Command, args []string) {
